@@ -291,6 +291,10 @@
             {
               "type": "doc",
               "id": "cli/config"
+            },
+            {
+              "type": "doc",
+              "id": "cli/help"
             }
           ]
         }
@@ -324,6 +328,10 @@
       "type": "category",
       "label": "Features",
       "items": [
+        {
+          "type": "doc",
+          "id": "package-sources"
+        },
         {
           "type": "doc",
           "id": "workspaces"

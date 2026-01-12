@@ -110,15 +110,14 @@ We provide two packages of pnpm CLI, `pnpm` and `@pnpm/exe`.
 - [`pnpm`](https://www.npmjs.com/package/pnpm) is an ordinary version of pnpm, which needs Node.js to run.
 - [`@pnpm/exe`](https://www.npmjs.com/package/@pnpm/exe) is packaged with Node.js into an executable, so it may be used on a system with no Node.js installed.
 
-
 ```sh
-npm install -g pnpm@latest-10
+npx pnpm@latest-10 dlx @pnpm/exe@latest-10 setup
 ```
 
 or
 
 ```sh
-npm install -g @pnpm/exe@latest-10
+npm install -g pnpm@latest-10
 ```
 
 ### Using Homebrew
@@ -178,6 +177,7 @@ Here is a list of past pnpm versions with respective Node.js version support.
 | Node.js 18 | ✔️      | ✔️      | ✔️       |
 | Node.js 20 | ✔️      | ✔️      | ✔️       |
 | Node.js 22 | ✔️      | ✔️      | ✔️       |
+| Node.js 24 | ✔️      | ✔️      | ✔️       |
 
 ## Troubleshooting
 

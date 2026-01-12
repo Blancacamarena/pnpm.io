@@ -79,6 +79,8 @@ const docusaurusConfig = {
         "blog": {
           "path": "blog",
           editUrl: ({locale, blogDirPath, blogPath}) => makeEditUrl(locale, blogDirPath, blogPath),
+          blogSidebarTitle: 'All posts',
+          blogSidebarCount: 'ALL',
         },
         "theme": {
           customCss: require.resolve('./src/css/customTheme.css'),
@@ -96,6 +98,7 @@ const docusaurusConfig = {
         "sidebarPath": path.join(__dirname, "sidebarsCommunity.json"),
       }),
     ],
+    'docusaurus-plugin-sass',
   ],
   "themeConfig": {
     "colorMode": {
@@ -203,6 +206,12 @@ const docusaurusConfig = {
           className: 'header-github-link',
           'aria-label': 'GitHub repository',
         },
+        {
+          href: 'https://bit.cloud/pnpm',
+          position: 'right',
+          className: 'header-bit-cloud-link',
+          'aria-label': 'Bit.cloud',
+        },
       ],
     },
     "image": "img/ogimage.png",
@@ -301,6 +310,9 @@ const docusaurusConfig = {
       "apiKey": "a337998a623aa8f80d2a97a79d565086",
       "indexName": "pnpm",
       "contextualSearch": true,
+    },
+    announcementBar: {
+      content: `Learn how to <b><a href="https://pnpm.io/supply-chain-security">Mitigate supply chain attacks with pnpm</a></b>`,
     },
   } satisfies Preset.ThemeConfig,
   i18n: {

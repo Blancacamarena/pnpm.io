@@ -97,7 +97,8 @@
           "cli/init",
           "cli/deploy",
           "cli/doctor",
-          "cli/config"
+          "cli/config",
+          "cli/help"
         ]
       }
     ],
@@ -108,6 +109,7 @@
       "pnpmfile"
     ],
     "Features": [
+      "package-sources",
       "workspaces",
       "catalogs",
       "config-dependencies",

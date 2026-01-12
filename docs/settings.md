@@ -243,6 +243,69 @@ minimumReleaseAgeExclude:
 - '@myorg/*'
 ```
 
+Added in: v10.19.0
+
+You may also exempt specific versions (or a list of specific versions using a disjunction with `||`). This allows pinning exceptions to mature-time rules:
+
+```yaml
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+- nx@21.6.5
+- webpack@4.47.0 || 5.102.1
+```
+
+### trustPolicy
+
+Added in: v10.21.0
+
+* Default: **off**
+* Type: **no-downgrade** | **off**
+
+When set to `no-downgrade`, pnpm will fail if a package's trust level has decreased compared to previous releases. For example, if a package was previously published by a trusted publisher but now only has provenance or no trust evidence, installation will fail. This helps prevent installing potentially compromised versions. Trust checks are based solely on publish date, not semver. A package cannot be installed if any earlier-published version had stronger trust evidence. Starting in v10.24.0, prerelease versions are ignored when evaluating trust evidence for a non-prerelease install, so a trusted prerelease cannot block a stable release that lacks trust evidence.
+
+### trustPolicyExclude
+
+Added in: v10.22.0
+
+* Default: **[]**
+* Type: **string[]**
+
+A list of package selectors that should be excluded from the trust policy check. This allows you to install specific packages or versions even if they don't satisfy the `trustPolicy` requirement.
+
+For example:
+
+```yaml
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - 'chokidar@4.0.3'
+  - 'webpack@4.47.0 || 5.102.1'
+  - '@babel/core@7.28.5'
+```
+
+### trustPolicyIgnoreAfter
+
+Added in: v10.27.0
+
+* Default: **undefined**
+* Type: **number (minutes)**
+
+Allows ignoring the trust policy check for packages published more than the specified number of minutes ago. This is useful when enabling strict trust policies, as it allows older versions of packages (which may lack a process for publishing with signatures or provenance) to be installed without manual exclusion, assuming they are safe due to their age.
+
+### blockExoticSubdeps
+
+Added in: v10.26.0
+
+* Default: **false**
+* Type: **Boolean**
+
+When set to `true`, only direct dependencies (those listed in your root `package.json`) may use exotic sources (like git repositories or direct tarball URLs). All transitive dependencies must be resolved from a trusted source, such as the configured registry, local file paths, workspace links, or trusted GitHub repositories (node, bun, deno).
+
+This setting helps secure the dependency supply chain by preventing transitive dependencies from pulling in code from untrusted locations.
+
+Exotic sources include:
+* Git repositories (`git+ssh://...`)
+* Direct URL links to tarballs (`https://.../package.tgz`)
+
 ## Dependency Hoisting Settings
 
 ### hoist
@@ -608,6 +671,17 @@ Max length of the peer IDs suffix added to dependency keys in the lockfile. If t
 
 The base URL of the npm package registry (trailing slash included).
 
+### @jsr\:registry
+
+Added in: v10.9.0
+
+* Default: **https://npm.jsr.io/**
+* Type: **url**
+
+The base URL of the [JSR] package registry.
+
+[JSR]: cli/add.md#install-from-the-jsr-registry
+
 #### &lt;scope\>:registry
 
 The npm registry that should be used for packages of the specified scope. For
@@ -701,6 +775,18 @@ registry. For example:
 //registry.npmjs.org/:cafile=ca-cert.pem
 ```
 
+### &lt;URL&gt;&#58;ca
+
+Added in: v10.25.0
+
+Define an inline Certificate Authority certificate for the specified registry.
+The value must be PEM-encoded, like the global `ca` setting, but it only applies
+to the matching registry URL.
+
+```sh
+//registry.example.com/:ca=-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----
+```
+
 ### cert
 
 * Default: **null**
@@ -714,6 +800,17 @@ cert="-----BEGIN CERTIFICATE-----\nXXXX\nXXXX\n-----END CERTIFICATE-----"
 ```
 
 It is not the path to a certificate file.
+
+### &lt;URL&gt;&#58;cert
+
+Added in: v10.25.0
+
+Define an inline client certificate to use when accessing the specified
+registry. Example:
+
+```sh
+//registry.example.com/:cert=-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----
+```
 
 ### &lt;URL&gt;&#58;certfile
 
@@ -736,9 +833,20 @@ A client key to pass when accessing the registry. Values should be in PEM format
 key="-----BEGIN PRIVATE KEY-----\nXXXX\nXXXX\n-----END PRIVATE KEY-----"
 ```
 
-It is not the path to a key file (and there is no `keyfile` option).
+It is not the path to a key file. Use `<URL>&#58;keyfile` if you need to reference
+the file system instead of inlining the key.
 
 This setting contains sensitive information. Don't write it to a local `.npmrc` file committed to the repository.
+
+### &lt;URL&gt;&#58;key
+
+Added in: v10.25.0
+
+Define an inline client key for the specified registry URL.
+
+```sh
+//registry.example.com/:key=-----BEGIN PRIVATE KEY-----...-----END PRIVATE KEY-----
+```
 
 ### &lt;URL&gt;&#58;keyfile
 
@@ -818,10 +926,12 @@ See also the `ca` option.
 
 ### networkConcurrency
 
-* Default: **16**
+* Default: **auto (workers × 3 clamped to 16-64)**
 * Type: **Number**
 
 Controls the maximum number of HTTP(S) requests to process simultaneously.
+
+As of v10.24.0, pnpm automatically selects a value between 16 and 64 based on the number of workers (networkConcurrency = clamp(workers × 3, 16, 64)). Set this value explicitly to override the automatic scaling.
 
 ### fetchRetries
 
@@ -858,6 +968,24 @@ too long.
 * Type: **Number**
 
 The maximum amount of time to wait for HTTP requests to complete.
+
+### fetchWarnTimeoutMs
+
+Added in: v10.18.0
+
+* Default: **10000 ms (10 seconds)**
+* Type: **Number**
+
+A warning message is displayed if a metadata request to the registry takes longer than the specified threshold (in milliseconds).
+
+### fetchMinSpeedKiBps
+
+Added in: v10.18.0
+
+* Default: **50 KiB/s**
+* Type: **Number**
+
+A warning message is displayed if the download speed of a tarball from the registry falls below the specified threshold (in KiB/s).
 
 ## Peer Dependency Settings
 
@@ -1207,10 +1335,26 @@ Added in: v10.3.0
 
 When `strictDepBuilds` is enabled, the installation will exit with a non-zero exit code if any dependencies have unreviewed build scripts (aka postinstall scripts).
 
+### allowBuilds
+ 
+Added in: v10.26.0
+ 
+A map of package matchers to explicitly allow (`true`) or disallow (`false`) script execution. This field replaces `onlyBuiltDependencies` and `ignoredBuiltDependencies` (which are also deprecated by this new setting), providing a single source of truth.
+ 
+```yaml
+allowBuilds:
+  esbuild: true
+  core-js: false
+  nx@21.6.4 || 21.6.5: true
+```
+
+**Default behavior:** Packages not listed in `allowBuilds` are disallowed by default and a warning is printed. If [`strictDepBuilds`](#strictdepbuilds) is set to `true`, an error will be printed instead.
+ 
 ### neverBuiltDependencies
 
-This field allows to ignore the builds of specific dependencies.
-The "preinstall", "install", and "postinstall" scripts of the listed packages will not be executed during installation.
+A list of package names that are NOT allowed to execute "preinstall", "install", and/or "postinstall" scripts during installation.
+
+Be careful when using `neverBuiltDependencies` without `onlyBuiltDependencies` because it implies all other dependencies are allowed.
 
 An example of the `neverBuiltDependencies` field:
 
@@ -1222,13 +1366,24 @@ neverBuiltDependencies:
 
 ### onlyBuiltDependencies
 
-A list of package names that are allowed to be executed during installation. Only packages listed in this array will be able to run install scripts. If `onlyBuiltDependenciesFile` and `neverBuiltDependencies` are not set, this configuration option will default to blocking all install scripts.
+A list of package names that are allowed to execute "preinstall", "install", and/or "postinstall" scripts during installation.
+Only the packages listed in this array will be able to run those lifecycle scripts. If `onlyBuiltDependenciesFile` and `neverBuiltDependencies` are omitted, this configuration option will default to blocking all install scripts.
 
 Example:
 
 ```yaml
 onlyBuiltDependencies:
 - fsevents
+```
+
+Added in: v10.19.0
+
+You may restrict allowances to specific versions (and lists of versions using a disjunction with `||`). When versions are specified, only those versions of the package may run lifecycle scripts:
+
+```yaml
+onlyBuiltDependencies:
+- nx@21.6.4 || 21.6.5
+- esbuild@0.25.1
 ```
 
 ### onlyBuiltDependenciesFile
@@ -1257,13 +1412,16 @@ The JSON file itself should contain an array of package names:
 
 Added in: v10.1.0
 
-A list of package names that should not be built during installation.
+A list of package names that are NOT allowed to execute "preinstall", "install", and/or "postinstall" scripts during installation and will not warn or ask to be executed.
+
+This is useful when you want to hide the warning because you know the lifecycle scripts are not needed.
 
 Example:
 
 ```yaml
 ignoredBuiltDependencies:
 - fsevents
+- sharp
 ```
 
 ### dangerouslyAllowAllBuilds
@@ -1361,270 +1519,6 @@ executionEnv:
   nodeVersion: 16.16.0
 ```
 
-## Workspace Settings
-
-### linkWorkspacePackages
-
-* Default: **false**
-* Type: **true**, **false**, **deep**
-
-If this is enabled, locally available packages are linked to `node_modules`
-instead of being downloaded from the registry. This is very convenient in a
-monorepo. If you need local packages to also be linked to subdependencies, you
-can use the `deep` setting.
-
-Else, packages are downloaded and installed from the registry. However,
-workspace packages can still be linked by using the `workspace:` range protocol.
-
-Packages are only linked if their versions satisfy the dependency ranges.
-
-### injectWorkspacePackages
-
-* Default: **false**
-* Type: **Boolean**
-
-Enables hard-linking of all local workspace dependencies instead of symlinking them. Alternatively, this can be achieved using [`dependenciesMeta[].injected`](package_json.md#dependenciesmetainjected), which allows to selectively enable hard-linking for specific dependencies.
-
-:::note
-
-Even if this setting is enabled, pnpm will prefer to deduplicate injected dependencies using symlinks—unless multiple dependency graphs are required due to mismatched peer dependencies. This behaviour is controlled by the `dedupeInjectedDeps` setting.
-
-:::
-
-### dedupeInjectedDeps
-
-* Default: **true**
-* Type: **Boolean**
-
-When this setting is enabled, [dependencies that are injected](package_json.md#dependenciesmetainjected) will be symlinked from the workspace whenever possible. If the dependent project and the injected dependency reference the same peer dependencies, then it is not necessary to physically copy the injected dependency into the dependent's `node_modules`; a symlink is sufficient.
-
-### syncInjectedDepsAfterScripts
-
-Added in: v10.5.0
-
-* Default: **undefined**
-* Type: **String[]**
-
-Injected workspace dependencies are collections of hardlinks, which don't add or remove the files when their sources change. This causes problems in packages that need to be built (such as in TypeScript projects).
-
-This setting is a list of script names. When any of these scripts are executed in a workspace package, the injected dependencies inside `node_modules` will also be synchronized.
-
-### preferWorkspacePackages
-
-* Default: **false**
-* Type: **Boolean**
-
-If this is enabled, local packages from the workspace are preferred over
-packages from the registry, even if there is a newer version of the package in
-the registry.
-
-This setting is only useful if the workspace doesn't use
-`saveWorkspaceProtocol`.
-
-### sharedWorkspaceLockfile
-
-* Default: **true**
-* Type: **Boolean**
-
-If this is enabled, pnpm creates a single `pnpm-lock.yaml` file in the root of
-the workspace. This also means that all dependencies of workspace packages will
-be in a single `node_modules` (and get symlinked to their package `node_modules`
-folder for Node's module resolution).
-
-Advantages of this option:
-* every dependency is a singleton
-* faster installations in a monorepo
-* fewer changes in code reviews as they are all in one file
-
-:::note
-
-Even though all the dependencies will be hard linked into the root
-`node_modules`, packages will have access only to those dependencies
-that are declared in their `package.json`, so pnpm's strictness is preserved.
-This is a result of the aforementioned symbolic linking.
-
-:::
-
-### saveWorkspaceProtocol
-
-* Default: **rolling**
-* Type: **true**, **false**, **rolling**
-
-This setting controls how dependencies that are linked from the workspace are added to `package.json`.
-
-If `foo@1.0.0` is in the workspace and you run `pnpm add foo` in another project of the workspace, below is how `foo` will be added to the dependencies field. The `savePrefix` setting also influences how the spec is created.
-
-| saveWorkspaceProtocol | savePrefix | spec |
-|--|--|--|
-| false | `''` | `1.0.0` |
-| false | `'~'` | `~1.0.0` |
-| false | `'^'` | `^1.0.0` |
-| true | `''` | `workspace:1.0.0` |
-| true | `'~'` | `workspace:~1.0.0` |
-| true | `'^'` | `workspace:^1.0.0` |
-| rolling | `''` | `workspace:*` |
-| rolling | `'~'` | `workspace:~` |
-| rolling | `'^'` | `workspace:^` |
-
-### includeWorkspaceRoot
-
-* Default: **false**
-* Type: **Boolean**
-
-When executing commands recursively in a workspace, execute them on the root workspace project as well.
-
-### ignoreWorkspaceCycles
-
-* Default: **false**
-* Type: **Boolean**
-
-When set to `true`, no workspace cycle warnings will be printed.
-
-### disallowWorkspaceCycles
-
-* Default: **false**
-* Type: **Boolean**
-
-When set to `true`, installation will fail if the workspace has cycles.
-
-## Deploy Settings
-
-### forceLegacyDeploy
-
-* Default: **false**
-* Type: **Boolean**
-
-By default, `pnpm deploy` will try creating a dedicated lockfile from a shared lockfile for deployment. If this setting is set to `true`, the legacy `deploy` behavior will be used.
-
-## Patching Dependencies
-
-### patchedDependencies
-
-This field is added/updated automatically when you run [pnpm patch-commit]. It defines patches for dependencies using a dictionary where:
-
-[pnpm patch-commit]: ./cli/patch-commit.md
-
-* **Keys**: Package names with an exact version, a version range, or just the name.
-* **Values**: Relative paths to patch files.
-
-Example:
-
-```yaml
-patchedDependencies:
-  express@4.18.1: patches/express@4.18.1.patch
-```
-
-Dependencies can be patched by version range. The priority order is:
-
-1. Exact versions (highest priority)
-2. Version ranges
-3. Name-only patches (applies to all versions unless overridden)
-
-A special case: the version range `*` behaves like a name-only patch but does not ignore patch failures.
-
-Exampe:
-
-```yaml
-patchedDependencies:
-  foo: patches/foo-1.patch
-  foo@^2.0.0: patches/foo-2.patch
-  foo@2.1.0: patches/foo-3.patch
-```
-
-* `patches/foo-3.patch` is applied to `foo@2.1.0`.
-* `patches/foo-2.patch` applies to all foo versions matching `^2.0.0`, except `2.1.0`.
-* `patches/foo-1.patch` applies to all other foo versions.
-
-Avoid overlapping version ranges. If you need to specialize a sub-range, explicitly exclude it from the broader range.
-
-Example:
-
-```yaml
-patchedDependencies:
-  # Specialized sub-range
-  "foo@2.2.0-2.8.0": patches/foo.2.2.0-2.8.0.patch
-  # General patch, excluding the sub-range above
-  "foo@>=2.0.0 <2.2.0 || >2.8.0": patches/foo.gte2.patch
-```
-
-In most cases, defining an exact version is enough to override a broader range.
-
-### allowUnusedPatches
-
-Added in: v10.7.0 (Previously named `allowNonAppliedPatches`)
-
-* Default: **false**
-* Type: **Boolean**
-
-When `true`, installation won't fail if some of the patches from the `patchedDependencies` field were not applied.
-
-```json
-patchedDependencies:
-  express@4.18.1: patches/express@4.18.1.patch
-allowUnusedPatches: true
-```
-
-### ignorePatchFailures
-
-Added in: v10.7.0
-
-* Default: **undefined**
-* Type: **Boolean**, **undefined**
-
-Controls how patch failures are handled.
-
-Behaviour:
-
-* **undefined (default)**:
-  * Errors out when a patch with an exact version or version range fails.
-  * Ignores failures from name-only patches.
-* **false**: Errors out for any patch failure.
-* **true**: Prints a warning instead of failing when any patch cannot be applied.
-
-## Audit Settings
-
-### auditConfig
-
-#### auditConfig.ignoreCves
-
-A list of CVE IDs that will be ignored by the [`pnpm audit`] command.
-
-```yaml
-auditConfig:
-  ignoreCves:
-    - CVE-2022-36313
-```
-
-[`pnpm audit`]: ./cli/audit.md
-
-#### auditConfig.ignoreGhsas
-
-A list of GHSA Codes that will be ignored by the [`pnpm audit`] command.
-
-```yaml
-auditConfig:
-  ignoreGhsas:
-    - GHSA-42xw-2xvc-qx8m
-    - GHSA-4w2v-q235-vp99
-    - GHSA-cph5-m8f7-6c5x
-    - GHSA-vh95-rmgr-6w4m
-```
-
-[`pnpm audit`]: ./cli/audit.md
-
-## Pnpmfile
-
-import IgnorePnpmfile from './settings/_ignorePnpmfile.mdx'
-
-<IgnorePnpmfile />
-
-import Pnpmfile from './settings/_pnpmfile.mdx'
-
-<Pnpmfile />
-
-import GlobalPnpmfile from './settings/_globalPnpmfile.mdx'
-
-<GlobalPnpmfile />
 
 ## Other Settings
 
@@ -1783,7 +1677,7 @@ When set to `true`, dependencies that are already symlinked to the root `node_mo
 
 Added in: v10.1.0
 
-* Default: **true**
+* Default: **false**
 * Type: **Boolean**
 
 When enabled, a fast check will be performed before proceeding to installation. This way a repeat install or an install on a project with everything up-to-date becomes a lot faster.
